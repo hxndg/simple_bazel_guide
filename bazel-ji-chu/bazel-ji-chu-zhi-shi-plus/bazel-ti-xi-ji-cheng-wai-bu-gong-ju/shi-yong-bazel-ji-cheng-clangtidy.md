@@ -12,7 +12,13 @@ Clang-Tidy是基于Clang的C++ Lint工具，用于检查C++代码中的常见编
 
 ### 为啥我要阅读这一页？
 
-原因很简单，针对语言层面的安全检查是SAST实践的核心。因此怎么在Bazel上集成clang-tidy就变成一种通用的手段，本质是使用Bazel提供的Aspect
+原因很简单，针对语言层面的安全检查是SAST实践的核心。因此怎么在Bazel上集成clang-tidy就变成一种通用的手段，本质是使用Bazel提供的Aspect。
+
+这种方式的好处有三个
+
+* 可以针对任意的C++对象执行clang-tidy
+* 因为用的是bazel的aspect，所以实际上并没有做真正的构建。直接调用clang-tidy对per文件做分析
+* Bazel会缓存clang-tidy 的结果，如果文件没变化，那么clang-tidy不会重新运行。
 
 
 
@@ -57,5 +63,24 @@ build:tidy --output_groups=report
 bazel build --config=tidy //...
 ```
 
-接下来就会针对build的对象启动clang-tidy的检查
+接下来就会针对build的对象启动clang-tidy的检查。
 
+
+
+我们都非常清楚，clang-tidy是一个复杂检查，其中有很多种的checker可以开启，如果需要配置clang-tidy的config，可以添加一个新的配置文件，调用的时候使用第二条命令。
+
+```
+# //:BUILD
+filegroup(
+       name = "clang_tidy_config",
+       srcs = [".clang-tidy"],
+       visibility = ["//visibility:public"],
+)
+```
+
+```
+bazel build //... \
+  --aspects @bazel_clang_tidy//clang_tidy:clang_tidy.bzl%clang_tidy_aspect \
+  --output_groups=report \
+  --@bazel_clang_tidy//:clang_tidy_config=//:clang_tidy_config
+```

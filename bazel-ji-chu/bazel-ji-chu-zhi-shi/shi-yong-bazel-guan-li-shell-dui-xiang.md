@@ -58,3 +58,5 @@ set -e
 echo "Envoking save money mode"
 save_money/compare/jandan ${FLAGS_chinese} ${FLAGS_US}
 ```
+
+最后直接调用bazel run就可以执行具体的shell target了。

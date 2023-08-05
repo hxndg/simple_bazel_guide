@@ -2,25 +2,17 @@
 
 ### 引言
 
-建议直接参考[https://ltekieli.com/cross-compiling-with-bazel/](https://ltekieli.com/cross-compiling-with-bazel/)，我这里只是一个简单的翻译
+建议直接参考[https://ltekieli.com/cross-compiling-with-bazel/](https://ltekieli.com/cross-compiling-with-bazel/)，我这里只是一个简单的翻译。如果下面的内容没看懂咋回事，建议先看看toolchain配置那部分的东西。
 
 
 
 ### 内容
 
-简单介绍一下 Bazel 以及如何使用这个工具进行交叉编译。这里会解释如何针对主机平台以及多个不同的目标进行构建。[可以在此处](https://github.com/ltekieli/bazel\_cross\_compile)获取本练习中使用的部分存储库。
+简单介绍一下 Bazel 以及如何使用这个工具进行交叉编译。这里会解释如何针对主机平台以及多个不同的目标进行构建。[可以在此处](https://github.com/ltekieli/bazel\_cross\_compile)获取本练习中使用的部分存储库，这里参考第四部分platform那部分的代码。
 
-#### 安装 Bazelisk <a href="#installingbazelisk" id="installingbazelisk"></a>
 
-我强烈建议使用[Bazelisk](https://github.com/bazelbuild/bazelisk)来管理 Bazel 安装。命令如下：
 
-```
-$ wget https://github.com/bazelbuild/bazelisk/releases/download/v1.6.1/bazelisk-linux-amd64
-$ sudo mv bazelisk-linux-amd64 /usr/local/bin/bazel
-$ sudo chmod +x /usr/local/bin/bazel
-```
-
-#### 编译“hello world！” <a href="#compilinghelloworld" id="compilinghelloworld"></a>
+#### 源码结构 <a href="#compilinghelloworld" id="compilinghelloworld"></a>
 
 一个C++ 项目最简单的结构如下所示，毕竟是hello world，没什么难点：
 
@@ -73,154 +65,11 @@ Hello World!
 
 
 
-#### 下载依赖项 <a href="#downloadingdependencies" id="downloadingdependencies"></a>
-
-为了设置交叉编译环境，我们需要下载工具链。手动执行此操作非常乏味，幸运的是 Bazel 已经包含了必要的工具。重点需要的实际上就是两个东西：编译器和 sysroot。
-
-```
-$ tree
-.
-├── BUILD
-├── main.cpp
-├── third_party
-│   ├── BUILD
-│   ├── deps.bzl
-│   └── toolchains
-│       ├── aarch64-rpi3-linux-gnu-sysroot.BUILD
-│       ├── aarch64-rpi3-linux-gnu.BUILD
-│       ├── arm-cortex_a8-linux-gnueabihf-sysroot.BUILD
-│       ├── arm-cortex_a8-linux-gnueabihf.BUILD
-│       ├── BUILD
-│       └── toolchains.bzl
-└── WORKSPACE
-```
-
-所有`*.BUILD"`文件都包含如何使用下载的工件内容的规范。这些`*.bzl`文件包含[Starlark](https://docs.bazel.build/versions/master/skylark/language.html)代码，该代码定义下载文件并将其公开为目标的逻辑。
-
-Bazel的 `WORKSPACE可以获取`它需要下载任何外部的依赖：
-
-```
-$ cat WORKSPACE 
-load("//third_party:deps.bzl", "deps")
-deps()
-```
-
-这里的deps函数实际上就是加载工具链。如下面的代码`deps.bzl`：这里的toochains实际上隐藏了外部包的详细信息，下面有toolchains的代码
-
-```
-$ cat third_party/deps.bzl 
-load("//third_party/toolchains:toolchains.bzl", "toolchains")
-
-def deps():
-    toolchains()
-```
-
-另一方面`toolchains.bzl`：
-
-```
-$ cat third_party/toolchains/toolchains.bzl 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
-URL_TOOLCHAIN = "https://github.com/ltekieli/devboards-toolchains/releases/download/v2020.09.01/"
-URL_SYSROOT = "https://github.com/ltekieli/buildroot/releases/download/v2020.09.01/"
-
-def toolchains():
-    if "aarch64-rpi3-linux-gnu" not in native.existing_rules():
-        http_archive(
-            name = "aarch64-rpi3-linux-gnu",
-            build_file = Label("//third_party/toolchains:aarch64-rpi3-linux-gnu.BUILD"),
-            url = URL_TOOLCHAIN + "aarch64-rpi3-linux-gnu.tar.gz",
-            sha256 = "35a093524e35061d0f10e302b99d164255dc285898d00a2b6ab14bfb64af3a45",
-        )
-
-    if "aarch64-rpi3-linux-gnu-sysroot" not in native.existing_rules():
-        http_archive(
-            name = "aarch64-rpi3-linux-gnu-sysroot",
-            build_file = Label("//third_party/toolchains:aarch64-rpi3-linux-gnu-sysroot.BUILD"),
-            url = URL_SYSROOT + "aarch64-rpi3-linux-gnu-sysroot.tar.gz",
-            sha256 = "56f3d84c9adf192981a243f27e6970afe360a60b72083ae06a8aa5c0161077a5",
-            strip_prefix = "sysroot",
-        )
-
-    if "arm-cortex_a8-linux-gnueabihf" not in native.existing_rules():
-        http_archive(
-            name = "arm-cortex_a8-linux-gnueabihf",
-            build_file = Label("//third_party/toolchains:arm-cortex_a8-linux-gnueabihf.BUILD"),
-            url = URL_TOOLCHAIN + "arm-cortex_a8-linux-gnueabihf.tar.gz",
-            sha256 = "6176e47be8fde68744d94ee9276473648e2e3d98d22578803d833d189ee3a6f0",
-        )
-
-    if "arm-cortex_a8-linux-gnueabihf-sysroot" not in native.existing_rules():
-        http_archive(
-            name = "arm-cortex_a8-linux-gnueabihf-sysroot",
-            build_file = Label("//third_party/toolchains:arm-cortex_a8-linux-gnueabihf-sysroot.BUILD"),
-            url = URL_SYSROOT + "arm-cortex_a8-linux-gnueabihf-sysroot.tar.gz",
-            sha256 = "89a72cc874420ad06394e2333dcbb17f088c2245587f1147ff9da124bb60328f",
-            strip_prefix = "sysroot",
-        )
-
-```
-
-这一段实际上就是先加载 http\_archive 规则，通过http下载的方式，将外部的依赖比方说compiler和sysroot都下载下来：
-
-```
-if "NAME_OF_THE_EXTERNAL_RESOURCE" not in native.existing_rules():
-    http_archive(
-        name = "NAME_OF_THE_EXTERNAL_RESOURCE",
-        build_file = Label("//path/to:buildfile.BUILD"),
-        url = SOME_URL,
-        sha256 = SOME_SHA256,
-    )
-```
-
-其中内容为：如果尚未定义此类规则，则使用具有给定名称、构建文件、URL 和校验和的 http\_archive 来定义它。
-
-如果往toolchain下载下来的文件继续排查，就会发现下面的代码，它将工具链内部的文件都公开了出来。方便任何内部调用使用
-
-`BUILD`文件包含来自下载工件的目标的定义，例如：
-
-```
-$ cat third_party/toolchains/aarch64-rpi3-linux-gnu.BUILD 
-package(default_visibility = ['//visibility:public'])
-
-filegroup(
-  name = 'toolchain',
-  srcs = glob([
-    '**',
-  ]),
-)
-```
-
-它将该包中所有目标的默认可见性指定为公共，并创建一个目标“工具链”，它是工件内所有文件的句柄。
-
-运行下面的命令就可以拿到这些action执行的最终结果：
-
-```
-$ bazel build @aarch64-rpi3-linux-gnu//:toolchain
-```
-
-看看 Bazel 为我们做了什么：
-
-```
-$ tree -L 1 bazel-02_deps/external/aarch64-rpi3-linux-gnu/
-├── aarch64-rpi3-linux-gnu
-├── bin
-├── BUILD.bazel
-├── build.log.bz2
-├── include
-├── lib
-├── libexec
-├── share
-└── WORKSPACE
-```
-
-Bazel 在他的缓存中下载了artifacts，将我们的`aarch64-rpi3-linux-gnu.BUILD`文件复制为`BUILD.bazel`并添加了一个`WORKSPACE`文件，表明这是另一个外部依赖库。我们可以通过指定存储库名称来引用此类包内的所有目标：`@aarch64-rpi3-linux-gnu//:toolchain`。
-
 #### 设置自定义工具链 <a href="#settingupcustomtoolchains" id="settingupcustomtoolchains"></a>
 
-Bazel 支持两种设置自定义工具链的方法，一种是旧方法`crosstool_top，`另一种是用平台的新方法，原文用的是两种方法，我这里翻译就不写旧的方法了，只使用新的方法。
+Bazel 跨平台编译方法很多，一种是旧方法`crosstool_top，`另一种是用平台的新方法，原文用的是两种方法，我这里就不翻译旧的方法了，只写一下用新的方法，这部分的顺序还是按照工具链配置里面的方式来写
 
-使用具有上述设置的平台需要几个额外的步骤。首先我们需要定义我们的新平台：
+首先，定义目标平台，如下：
 
 ```
 $ cat bazel/platforms/BUILD 
@@ -233,7 +82,7 @@ platform(
 )
 ```
 
-其次，我们需要创建新的平台兼容的工具链目标：
+其次，我们需要创建新的平台兼容的工具链，可以看到这个工具链要求构建平台必须是满足一定的兼容条件：
 
 ```
 $ cat bazel/toolchain/aarch64-rpi3-linux-gnu/BUILD 
@@ -294,12 +143,86 @@ bazel-bin/hello: ELF 64-bit LSB executable, ARM aarch64, version 1 (SYSV), dynam
 
 
 
-你可能会奇怪，这个怎么就自动生效了？这里实际上是指示 bazel 使用`aarch64`工具链。`gcc_toolchainbazel/toolchain/aarch64-rpi3-linux-gnu`
+你可能会感觉比较奇特，我啥都没看到呀，所以接下来跳过工具链注册的外部，看下工具链具体的内部.
 
-该文件包含我们在交叉编译时要使用的所有工具的定义：
+
+
+首先在Workspace里面显示加载 http\_archive 规则，通过http下载的方式，将外部的依赖比方说compiler和sysroot都下载下来：
 
 ```
-$ cat bazel/toolchain/aarch64-rpi3-linux-gnu/BUILD 
+$ cat third_party/deps.bzl 
+load("//third_party/toolchains:toolchains.bzl", "toolchains")
+
+def deps():
+    toolchains()
+
+$ cat third_party/toolchains/toolchains.bzl 
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+URL_TOOLCHAIN = "https://github.com/ltekieli/devboards-toolchains/releases/download/v2020.09.01/"
+URL_SYSROOT = "https://github.com/ltekieli/buildroot/releases/download/v2020.09.01/"
+
+def toolchains():
+    if "aarch64-rpi3-linux-gnu" not in native.existing_rules():
+        http_archive(
+            name = "aarch64-rpi3-linux-gnu",
+            build_file = Label("//third_party/toolchains:aarch64-rpi3-linux-gnu.BUILD"),
+            url = URL_TOOLCHAIN + "aarch64-rpi3-linux-gnu.tar.gz",
+            sha256 = "35a093524e35061d0f10e302b99d164255dc285898d00a2b6ab14bfb64af3a45",
+        )
+
+    if "aarch64-rpi3-linux-gnu-sysroot" not in native.existing_rules():
+        http_archive(
+            name = "aarch64-rpi3-linux-gnu-sysroot",
+            build_file = Label("//third_party/toolchains:aarch64-rpi3-linux-gnu-sysroot.BUILD"),
+            url = URL_SYSROOT + "aarch64-rpi3-linux-gnu-sysroot.tar.gz",
+            sha256 = "56f3d84c9adf192981a243f27e6970afe360a60b72083ae06a8aa5c0161077a5",
+            strip_prefix = "sysroot",
+        )
+
+    if "arm-cortex_a8-linux-gnueabihf" not in native.existing_rules():
+        http_archive(
+            name = "arm-cortex_a8-linux-gnueabihf",
+            build_file = Label("//third_party/toolchains:arm-cortex_a8-linux-gnueabihf.BUILD"),
+            url = URL_TOOLCHAIN + "arm-cortex_a8-linux-gnueabihf.tar.gz",
+            sha256 = "6176e47be8fde68744d94ee9276473648e2e3d98d22578803d833d189ee3a6f0",
+        )
+
+    if "arm-cortex_a8-linux-gnueabihf-sysroot" not in native.existing_rules():
+        http_archive(
+            name = "arm-cortex_a8-linux-gnueabihf-sysroot",
+            build_file = Label("//third_party/toolchains:arm-cortex_a8-linux-gnueabihf-sysroot.BUILD"),
+            url = URL_SYSROOT + "arm-cortex_a8-linux-gnueabihf-sysroot.tar.gz",
+            sha256 = "89a72cc874420ad06394e2333dcbb17f088c2245587f1147ff9da124bb60328f",
+            strip_prefix = "sysroot",
+        )
+
+```
+
+
+
+这一段实际上就是先加载 http\_archive 规则，通过http下载的方式，将外部的依赖比方说compiler和sysroot都下载下来，如果往toolchain下载下来的文件继续排查，就会发现下面的代码，它将工具链内部的文件都公开了出来。方便任何内部调用使用，并创建一个目标“工具链”，它是工件内所有文件的可用的公开内容。
+
+编辑完了，可以看下最终搞出来了些什么，外部依赖和连接库：
+
+```
+$ tree -L 1 bazel-02_deps/external/aarch64-rpi3-linux-gnu/
+├── aarch64-rpi3-linux-gnu
+├── bin
+├── BUILD.bazel
+├── build.log.bz2
+├── include
+├── lib
+├── libexec
+├── share
+└── WORKSPACE
+```
+
+
+
+接下来，在bazel/toolchain部分的BUILD文件内部明确地指定了toolchain，并且将toolchain包裹起来
+
+```
 package(default_visibility = ["//visibility:public"])
 
 load(":cc_toolchain_config.bzl", "cc_toolchain_config")
@@ -329,6 +252,7 @@ cc_toolchain(
     toolchain_identifier = "aarch64-toolchain",
     toolchain_config = ":aarch64_toolchain_config",
     all_files = ":all_files",
+    ar_files = ":all_files",
     compiler_files = ":all_files",
     dwp_files = ":empty",
     linker_files = ":all_files",
@@ -343,55 +267,23 @@ cc_toolchain_suite(
     },
     tags = ["manual"]
 )
+
+toolchain(
+    name = "aarch64_linux_toolchain",
+    exec_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+    target_compatible_with = [
+        "@platforms//os:linux",
+        "@platforms//cpu:aarch64",
+    ],
+    toolchain = ":aarch64_toolchain",
+    toolchain_type = "@bazel_tools//tools/cpp:toolchain_type",
+)
 ```
 
-这里实际的操作，是搞了一堆外部文件，包括编译器和sysroot，之后将他们组装到一起，这里的filegroup是从编译器和 sysroot 外部下载的工件引用的文件的便捷包装器，为了简单起见，将引用各处的所有文件都包到了一起。
-
-组装完成之后，使用一个更精细`cc_toolchain`来构建C++的工具链
-
-
-
-代码路径下面实际上是这样的目录包装文件：
-
-```
-$ tree bazel/toolchain/aarch64-rpi3-linux-gnu/wrappers/
-bazel/toolchain/aarch64-rpi3-linux-gnu/wrappers/
-├── aarch64-rpi3-linux-gnu-ar -> wrapper
-├── aarch64-rpi3-linux-gnu-cpp -> wrapper
-├── aarch64-rpi3-linux-gnu-gcc -> wrapper
-├── aarch64-rpi3-linux-gnu-gcov -> wrapper
-├── aarch64-rpi3-linux-gnu-ld -> wrapper
-├── aarch64-rpi3-linux-gnu-nm -> wrapper
-├── aarch64-rpi3-linux-gnu-objdump -> wrapper
-├── aarch64-rpi3-linux-gnu-strip -> wrapper
-└── wrapper
-```
-
-wrapper是一个引用包装器脚本，它最终知道实际工具驻留在哪里：
-
-```
-$ cat bazel/toolchain/aarch64-rpi3-linux-gnu/wrappers/wrapper 
-#!/bin/bash
- 
-NAME=$(basename "$0")
-TOOLCHAIN_BINDIR=external/aarch64-rpi3-linux-gnu/bin
- 
-exec "${TOOLCHAIN_BINDIR}"/"${NAME}" "$@"
-```
-
-Bazel 将调用`bazel/toolchain/aarch64-rpi3-linux-gnu/wrappers/aarch64-rpi3-linux-gnu-gcc，`它将执行驻留在外部目录的 sandobx 内的实际 gcc：`external/aarch64-rpi3-linux-gnu/bin/aarch64-rpi3-linux-gnu-gcc`。
-
-
-
-再向下，看下如何找到对应的执行文件
-
-```
-load(":cc_toolchain_config.bzl", "cc_toolchain_config")
-...
-cc_toolchain_config(name = "aarch64_toolchain_config")
-```
-
-从附加文件加载工具链配置，其中包含特定工具链工具的路径，以及编译和链接步骤的默认标志：
+cc\_toolchain\_config.bzl制定了具体的命令实现，比方说provider啥的都明确指定了。
 
 ```
 $ cat bazel/toolchain/aarch64-rpi3-linux-gnu/cc_toolchain_config.bzl 
@@ -525,7 +417,39 @@ cc_toolchain_config = rule(
 )
 ```
 
+而那些编译器，链接器实际上都是报了一层wrapper,yejiushishuo 代码路径下面实际上是这样的目录包装文件：
 
+```
+$ tree bazel/toolchain/aarch64-rpi3-linux-gnu/wrappers/
+bazel/toolchain/aarch64-rpi3-linux-gnu/wrappers/
+├── aarch64-rpi3-linux-gnu-ar -> wrapper
+├── aarch64-rpi3-linux-gnu-cpp -> wrapper
+├── aarch64-rpi3-linux-gnu-gcc -> wrapper
+├── aarch64-rpi3-linux-gnu-gcov -> wrapper
+├── aarch64-rpi3-linux-gnu-ld -> wrapper
+├── aarch64-rpi3-linux-gnu-nm -> wrapper
+├── aarch64-rpi3-linux-gnu-objdump -> wrapper
+├── aarch64-rpi3-linux-gnu-strip -> wrapper
+└── wrapper
+```
+
+wrapper是一个引用包装器脚本，它实际上就是将调用转换为特定目录下的调用，它内部代码如下
+
+```
+$ cat bazel/toolchain/aarch64-rpi3-linux-gnu/wrappers/wrapper 
+#!/bin/bash
+ 
+NAME=$(basename "$0")
+TOOLCHAIN_BINDIR=external/aarch64-rpi3-linux-gnu/bin
+ 
+exec "${TOOLCHAIN_BINDIR}"/"${NAME}" "$@"
+```
+
+Bazel 将调用`bazel/toolchain/aarch64-rpi3-linux-gnu/wrappers/aarch64-rpi3-linux-gnu-gcc，`它将执行驻留在外部目录的 sandobx 内的实际 gcc：`external/aarch64-rpi3-linux-gnu/bin/aarch64-rpi3-linux-gnu-gcc`。
+
+
+
+所以整个过程实际上是bazel先下载外部依赖，sysroot啥的，然后再显地内部调用
 
 #### 设置自定义平台 <a href="#settingupcustomplatforms" id="settingupcustomplatforms"></a>
 
@@ -553,4 +477,4 @@ $ bazel build --config=rpi-platform //:hello
 
 ### 概括 <a href="#summary" id="summary"></a>
 
-这些步骤应该适用于大多数 C++ 工具链。尽管最终的设置过程可能会很复杂，但所带来的好处确实是值得的。可以获得开箱即用的缓存、分布式和单命令构建。
+这些步骤应该适用于大多数 C++ 工具链。尽管设置过程可能会很复杂，但所带来的好处确实是值得的。可以获得开箱即用的缓存、分布式和单命令构建。

@@ -68,7 +68,7 @@ examples
 
 #### 设置WorkSpace <a href="#set_up_the_workspace" id="set_up_the_workspace"></a>
 
-在构建项目之前，需要设置WorkSpace。工作区是一个保存源代码和 Bazel 构建输出的目录。它还必须包含下面两种文件：
+在构建项目之前，需要设置WorkSpace。一般将工作区理解为一个保存源代码和 Bazel 构建输出的目录。它必须包含下面两种文件：
 
 * [`WORKSPACE file`](https://bazel.build/reference/glossary#workspace-file)文件，标识一个 Bazel 工作区，一般是位于代码根目录下。
 * [`BUILD files`](https://bazel.build/reference/glossary#build-file) ，告诉 Bazel 如何构建项目的不同部分。工作区中包含文件的目录`BUILD`是package。（本教程稍后将详细介绍包。）

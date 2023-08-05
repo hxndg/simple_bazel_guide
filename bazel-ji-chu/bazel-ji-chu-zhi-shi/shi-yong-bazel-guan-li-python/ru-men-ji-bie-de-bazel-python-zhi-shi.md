@@ -135,3 +135,6 @@ jira
 
 ```
 
+
+
+最后直接bazel build对应的target即可了

@@ -2,9 +2,7 @@
 
 ### 引言
 
-参考[https://github.com/grailbio/bazel-toolchain](https://github.com/grailbio/bazel-toolchain)
-
-
+C++可以直接参考https://github.com/grailbio/bazel-toolchain，llvm这一套已经是成熟可用的了。
 
 ### 内容
 

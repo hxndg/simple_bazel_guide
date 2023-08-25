@@ -9,6 +9,7 @@
       * [核心基础概念](bazel-ji-chu/bazel-ji-chu-zhi-shi/bazel-de-ji-chu-gai-nian/he-xin-ji-chu-gai-nian.md)
       * [快速浏览Bazel配置方法](bazel-ji-chu/bazel-ji-chu-zhi-shi/bazel-de-ji-chu-gai-nian/kuai-su-liu-lan-bazel-pei-zhi-fang-fa.md)
       * [输出布局](bazel-ji-chu/bazel-ji-chu-zhi-shi/bazel-de-ji-chu-gai-nian/shu-chu-bu-ju.md)
+      * [代码实践](bazel-ji-chu/bazel-ji-chu-zhi-shi/bazel-de-ji-chu-gai-nian/dai-ma-shi-jian.md)
     * [使用Bazel管理C++](bazel-ji-chu/bazel-ji-chu-zhi-shi/shi-yong-bazel-guan-li-c++/README.md)
       * [入门的Bazel C++知识](bazel-ji-chu/bazel-ji-chu-zhi-shi/shi-yong-bazel-guan-li-c++/ru-men-de-bazel-c++-zhi-shi.md)
       * [C++规则](bazel-ji-chu/bazel-ji-chu-zhi-shi/shi-yong-bazel-guan-li-c++/c++-gui-ze.md)
